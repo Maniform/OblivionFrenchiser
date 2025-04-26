@@ -40,6 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 	ui->s1ListWidget->setVisible(false);
 	ui->s2ListWidget->setVisible(false);
+	ui->s3MissingListWidget->setVisible(false);
 	ui->progressBar->setVisible(false);
 
 	connect(&s1ProcessFolderFutureWatcher, &QFutureWatcher<QList<WemFile>>::finished, this, &MainWindow::s1ProcessFinished);
@@ -350,6 +351,8 @@ void MainWindow::on_s3ReplaceVoicesPushButton_clicked()
 	ui->progressBar->setMaximum(wemFiles.size());
 	ui->progressBar->setVisible(true);
 
+	matchingFiles.clear();
+
 	s3ProcessVoiceFuture = QtConcurrent::mapped(wemFiles,
 		[this](const WemFile& wemFile)
 		{
@@ -378,7 +381,7 @@ void MainWindow::s3ProcessVoicesFinished()
 
 void MainWindow::s3ProcessReplaceVoicesFinished()
 {
-	ui->s3ReplaceVoicesGroupBox->setEnabled(false);
+	ui->s3ReplaceVoicesGroupBox->setEnabled(true);
 	ui->progressBar->setVisible(false);
 
 	QMessageBox::information(this, tr("Terminé"), tr("Les voix ont été remplacées avec succès."));
