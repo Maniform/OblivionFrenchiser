@@ -46,6 +46,10 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(&s1ProcessFilesFutureWatcher, &QFutureWatcher<WemFile>::progressValueChanged, ui->progressBar, &QProgressBar::setValue);
 	connect(&s2ProcessVoiceFolderFutureWatcher, &QFutureWatcher<QStringList>::finished, this, &MainWindow::s2ProcessVoiceFolderFinished);
 	connect(&s2ProcessVoiceFilesFutureWatcher, &QFutureWatcher<QString>::finished, this, &MainWindow::s2ProcessVoiceFilesFinished);
+	connect(&s3ProcessVoiceFutureWatcher, &QFutureWatcher<WemFile>::progressValueChanged, ui->progressBar, &QProgressBar::setValue);
+	connect(&s3ProcessVoiceFutureWatcher, &QFutureWatcher<MatchingFile>::finished, this, &MainWindow::s3ProcessVoicesFinished);
+	connect(&s3ProcessReplaceVoiceFutureWatcher, &QFutureWatcher<void>::progressValueChanged, ui->progressBar, &QProgressBar::setValue);
+	connect(&s3ProcessReplaceVoiceFutureWatcher, &QFutureWatcher<void>::finished, this, &MainWindow::s3ProcessReplaceVoicesFinished);
 }
 
 MainWindow::~MainWindow()
@@ -54,6 +58,14 @@ MainWindow::~MainWindow()
 	s1ProcessFolderFutureWatcher.cancel();
 	s1ProcessFilesFuture.cancel();
 	s1ProcessFilesFutureWatcher.cancel();
+	s2ProcessVoiceFolderFuture.cancel();
+	s2ProcessVoiceFolderFutureWatcher.cancel();
+	s2ProcessVoiceFilesFuture.cancel();
+	s2ProcessVoiceFilesFutureWatcher.cancel();
+	s3ProcessVoiceFuture.cancel();
+	s3ProcessVoiceFutureWatcher.cancel();
+	s3ProcessReplaceVoiceFuture.cancel();
+	s3ProcessReplaceVoiceFutureWatcher.cancel();
 
 	delete ui;
 }
@@ -133,66 +145,44 @@ VoiceFile MainWindow::s2ProcessVoiceFile(const QString& filePath)
 	return result;
 }
 
-void MainWindow::replaceVoices()
+MatchingFile MainWindow::s3ProcessVoice(const WemFile& wemFile)
 {
+	MatchingFile result;
+	result.wemFile = &wemFile;
 	QString outputFolder = ui->s3OutputFolderLineEdit->text();
-	if (outputFolder.isEmpty())
-	{
-		QMessageBox::warning(this, tr("Erreur"), tr("Veuillez sélectionner un dossier de sortie."));
-		return;
-	}
-	QDir dir(outputFolder);
-	if (!dir.exists())
-	{
-		QMessageBox::warning(this, tr("Erreur"), tr("Le dossier de sortie n'existe pas."));
-		return;
-	}
-	ui->progressBar->setRange(0, 0);
-	//ui->progressBar->setVisible(true);
 
-	QFile outputFile("output.txt");
-	outputFile.open(QIODevice::WriteOnly | QIODevice::Text);
-	QTextStream ts(&outputFile);
-
-	for (const WemFile& wemFile : wemFiles)
+	QString baseName = QFileInfo(wemFile.filePath).baseName();
+	if (voiceFileByBaseNames.contains(baseName))
 	{
-		QString baseName = QFileInfo(wemFile.filePath).baseName();
+		result.found = true;
+		result.voiceFile = voiceFileByBaseNames[baseName];
+		return result;
+	}
+	else
+	{
+		for (const QString& correspondingRace : correspondingRaces.keys())
+		{
+			baseName.replace(correspondingRace, correspondingRaces[correspondingRace]);
+		}
+		for (const QString& subFolder : subFolders)
+		{
+			baseName.replace("_" + subFolder, "");
+		}
+
 		if (voiceFileByBaseNames.contains(baseName))
 		{
-			VoiceFile* voiceFile = voiceFileByBaseNames[baseName];
-			QString outputFilePath = outputFolder + "/" + QString::number(wemFile.id) + ".wem";
-			QFile::copy(voiceFile->filePath, outputFilePath);
-		}
-		else
-		{
-			for (const QString& correspondingRace : correspondingRaces.keys())
-			{
-				baseName.replace(correspondingRace, correspondingRaces[correspondingRace]);
-			}
-			for (const QString& subFolder : subFolders)
-			{
-				baseName.replace("_" + subFolder, "");
-			}
-
-			if (voiceFileByBaseNames.contains(baseName))
-			{
-				VoiceFile* voiceFile = voiceFileByBaseNames[baseName];
-				QString outputFilePath = outputFolder + "/" + QString::number(wemFile.id) + ".wem";
-				QFile::copy(voiceFile->filePath, outputFilePath);
-			}
-			else
-			{
-				ui->s3MissingListWidget->addItem(QFileInfo(wemFile.filePath).baseName());
-				ts << QFileInfo(wemFile.filePath).baseName() << Qt::endl;
-			}
+			result.found = true;
+			result.voiceFile = voiceFileByBaseNames[baseName];
+			return result;
 		}
 	}
-	outputFile.close();
 
-	ui->statusbar->showMessage(tr("Fichiers manquant : ") + QString::number(ui->s3MissingListWidget->count()));
+	return result;
+}
 
-	//s3ReplaceVoicesFuture = QtConcurrent::run(&MainWindow::s3ReplaceVoicesInFolder, this, outputFolder);
-	//s3ReplaceVoicesFutureWatcher.setFuture(s3ReplaceVoicesFuture);
+void MainWindow::replaceVoice(const MatchingFile& matchingFile, const QString& outputFolder)
+{
+	QFile::copy(matchingFile.voiceFile->filePath, outputFolder + "/" + QString::number(matchingFile.wemFile->id) + ".wem");
 }
 
 void MainWindow::on_s1InputFolderPushButton_clicked()
@@ -356,9 +346,40 @@ void MainWindow::on_s3ReplaceVoicesPushButton_clicked()
 	}
 
 	settings.setValue("s3OutputFolder", outputFolder);
-	//ui->s3ReplaceVoicesGroupBox->setEnabled(false);
-	ui->progressBar->setRange(0, 0);
+	ui->s3ReplaceVoicesGroupBox->setEnabled(false);
+	ui->progressBar->setMaximum(wemFiles.size());
 	ui->progressBar->setVisible(true);
 
-	replaceVoices();
+	s3ProcessVoiceFuture = QtConcurrent::mapped(wemFiles,
+		[this](const WemFile& wemFile)
+		{
+			return this->s3ProcessVoice(wemFile);
+		}
+	);
+	s3ProcessVoiceFutureWatcher.setFuture(s3ProcessVoiceFuture);
+}
+
+void MainWindow::s3ProcessVoicesFinished()
+{
+	matchingFiles = s3ProcessVoiceFuture.results();
+	ui->progressBar->setMaximum(matchingFiles.size());
+
+	s3ProcessReplaceVoiceFuture = QtConcurrent::map(matchingFiles,
+		[this](const MatchingFile& matchingFile)
+		{
+			if (matchingFile.found)
+			{
+				this->replaceVoice(matchingFile, ui->s3OutputFolderLineEdit->text());
+			}
+		}
+	);
+	s3ProcessReplaceVoiceFutureWatcher.setFuture(s3ProcessReplaceVoiceFuture);
+}
+
+void MainWindow::s3ProcessReplaceVoicesFinished()
+{
+	ui->s3ReplaceVoicesGroupBox->setEnabled(false);
+	ui->progressBar->setVisible(false);
+
+	QMessageBox::information(this, tr("Terminé"), tr("Les voix ont été remplacées avec succès."));
 }

@@ -26,6 +26,13 @@ struct VoiceFile
 	QString correspondingName;
 };
 
+struct MatchingFile
+{
+	const WemFile* wemFile = nullptr;
+	bool found = false;
+	const VoiceFile* voiceFile = nullptr;
+};
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -48,6 +55,7 @@ private:
 	QHash<QString, WemFile*> wemByCodec;
 	QHash<QString, WemFile*> wemByBaseNames;
 	QHash<QString, VoiceFile*> voiceFileByBaseNames;
+	QList<MatchingFile> matchingFiles;
 
 	QStringList getFilesInFolder(const QString& folderPath, const QStringList& fileSuffixes);
 
@@ -65,7 +73,12 @@ private:
 	QFutureWatcher<VoiceFile> s2ProcessVoiceFilesFutureWatcher;
 	VoiceFile s2ProcessVoiceFile(const QString& filePath);
 
-	void replaceVoices();
+	QFuture<MatchingFile> s3ProcessVoiceFuture;
+	QFutureWatcher<MatchingFile> s3ProcessVoiceFutureWatcher;
+	MatchingFile s3ProcessVoice(const WemFile& wemFile);
+	QFuture<void> s3ProcessReplaceVoiceFuture;
+	QFutureWatcher<void> s3ProcessReplaceVoiceFutureWatcher;
+	void replaceVoice(const MatchingFile& matchingFile, const QString& outputFolder);
 
 private slots:
 	void on_s1InputFolderPushButton_clicked();
@@ -79,5 +92,7 @@ private slots:
 
 	void on_s3OutputFolderPushButton_clicked();
 	void on_s3ReplaceVoicesPushButton_clicked();
+	void s3ProcessVoicesFinished();
+	void s3ProcessReplaceVoicesFinished();
 };
 #endif // MAINWINDOW_H
