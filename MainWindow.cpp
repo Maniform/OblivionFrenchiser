@@ -38,9 +38,6 @@ MainWindow::MainWindow(QWidget *parent)
 	ui->s3OutputFolderLineEdit->setText(settings.value("s3OutputFolder", QDir::homePath()).toString());
 	ui->s3OutputFolderLineEdit->blockSignals(false);
 
-	ui->s1ListWidget->setVisible(false);
-	ui->s2ListWidget->setVisible(false);
-	ui->s3MissingListWidget->setVisible(false);
 	ui->progressBar->setVisible(false);
 
 	connect(&s1ProcessFolderFutureWatcher, &QFutureWatcher<QList<WemFile>>::finished, this, &MainWindow::s1ProcessFinished);
@@ -51,6 +48,8 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(&s3ProcessVoiceFutureWatcher, &QFutureWatcher<MatchingFile>::finished, this, &MainWindow::s3ProcessVoicesFinished);
 	connect(&s3ProcessReplaceVoiceFutureWatcher, &QFutureWatcher<void>::progressValueChanged, ui->progressBar, &QProgressBar::setValue);
 	connect(&s3ProcessReplaceVoiceFutureWatcher, &QFutureWatcher<void>::finished, this, &MainWindow::s3ProcessReplaceVoicesFinished);
+
+	QDir::current().mkdir("logs");
 }
 
 MainWindow::~MainWindow()
@@ -217,7 +216,6 @@ void MainWindow::on_s1ProcessPushButton_clicked()
 
 	settings.setValue("s1InputFolder", inputFolder);
 	ui->s1GroupBox->setEnabled(false);
-	ui->s1ListWidget->clear();
 
 	ui->progressBar->setRange(0, 0);
 	ui->progressBar->setVisible(true);
@@ -229,20 +227,16 @@ void MainWindow::on_s1ProcessPushButton_clicked()
 void MainWindow::s1ProcessFinished()
 {
 	ui->s1GroupBox->setEnabled(true);
-	ui->s1ListWidget->setVisible(true);
 	ui->progressBar->setVisible(false);
 	ui->s2GroupBox->setEnabled(true);
 
 	wemFiles = s1ProcessFolderFuture.result();
 
-	QStringList items;
 	for (WemFile& wemFile : wemFiles)
 	{
 		QString baseName = QFileInfo(wemFile.filePath).baseName();
 		wemByBaseNames[baseName] = &wemFile;
-		items << baseName + " : " + QString::number(wemFile.id);
 	}
-	ui->s1ListWidget->addItems(items);
 }
 
 void MainWindow::on_s2InputFolderPushButton_clicked()
@@ -275,7 +269,6 @@ void MainWindow::on_s2ProcessPushButton_clicked()
 
 	settings.setValue("s2InputFolder", inputFolder);
 	ui->s2GroupBox->setEnabled(false);
-	ui->s2ListWidget->clear();
 	ui->progressBar->setRange(0, 0);
 	ui->progressBar->setVisible(true);
 	voiceFiles.clear();
@@ -310,8 +303,6 @@ void MainWindow::s2ProcessVoiceFilesFinished()
 		voiceFileList << voiceFile.correspondingName;
 		voiceFileByBaseNames[voiceFile.correspondingName] = &voiceFile;
 	}
-	ui->s2ListWidget->addItems(voiceFileList);
-	ui->s2ListWidget->setVisible(true);
 
 	ui->s3ReplaceVoicesGroupBox->setEnabled(true);
 
@@ -377,6 +368,34 @@ void MainWindow::s3ProcessVoicesFinished()
 		}
 	);
 	s3ProcessReplaceVoiceFutureWatcher.setFuture(s3ProcessReplaceVoiceFuture);
+
+	QFile foundFilesLog("logs/foundFiles.log");
+	if (foundFilesLog.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		QTextStream out(&foundFilesLog);
+		for (const MatchingFile& matchingFile : matchingFiles)
+		{
+			if (matchingFile.found)
+			{
+				out << QFileInfo(matchingFile.wemFile->filePath).fileName() << "\t" << QFileInfo(matchingFile.voiceFile->filePath).fileName() << "\t" << matchingFile.wemFile->id << Qt::endl;
+			}
+		}
+		foundFilesLog.close();
+	}
+
+	QFile missingFilesLog("logs/missingFiles.log");
+	if (missingFilesLog.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		QTextStream out(&missingFilesLog);
+		for (const MatchingFile& matchingFile : matchingFiles)
+		{
+			if (!matchingFile.found)
+			{
+				out << QFileInfo(matchingFile.wemFile->filePath).fileName() << "\t" << matchingFile.wemFile->id << Qt::endl;
+			}
+		}
+		missingFilesLog.close();
+	}
 }
 
 void MainWindow::s3ProcessReplaceVoicesFinished()
