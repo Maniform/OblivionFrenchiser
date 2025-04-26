@@ -46,7 +46,7 @@ private:
 
 	QSettings settings;
 
-	const QHash<QString, QString> correspondingRaces;
+	const QHash<QString, QVector<QString>> correspondingRaces;
 	const QStringList subFolders;
 
 	QList<WemFile> wemFiles;

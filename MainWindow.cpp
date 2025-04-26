@@ -10,19 +10,20 @@ MainWindow::MainWindow(QWidget *parent)
 	, ui(new Ui::MainWindow)
 	, settings("Manicorp", "OblivionVoiceFrenchiser", this)
 	, correspondingRaces{
-		{ "wood_elf", "haut_elfe" },
-		{ "redguard", "rougegarde" },
-		{ "dark_elf", "haut_elfe" },
-		{ "argonian", "argonien" },
-		{ "khakiit", "argonien" },
-		{ "nord", "nordique" },
-		{ "orc", "nordique" },
-		{ "breton", "imperial" },
-		{ "imperial", "imperial" },
-		{ "dark_seducer", "vil_séducteur" },
-		{ "golden_saint", "saint_doré" },
-		{ "sheogorath", "shéogorath" },
-		{ "dremora", "drémora" }
+		{ "high_elf", { "haut_elfe", "imperial" } },
+		{ "wood_elf", { "haut_elfe", "imperial" } },
+		{ "redguard", { "rougegarde", "imperial", "haut elfe", "nordique" } }, //je sais pas encore nordique ou haut elfe
+		{ "dark_elf", { "haut_elfe", "imperial" } },
+		{ "argonian", { "argonien", "haut_elfe" } },
+		{ "khajiit", { "argonien", "haut_elfe" } },
+		{ "nord", { "nordique", "rougegarde", "imperial", "haut elfe" } }, //je sais pas encore rougegarde ou impérial
+		{ "orc", { "nordique", "rougegarde", "imperial" } }, //je sais pas encore rougegarde ou impérial
+		{ "breton", { "imperial", "haut_elfe", "nordique" } },
+		{ "imperial", { "imperial", "haut_elfe", "rougegarde", "nordique" } },
+		{ "dark_seducer", { "vil_séducteur" } },
+		{ "golden_saint", { "saint_doré" } },
+		{ "sheogorath", { "shéogorath" } },
+		{ "dremora", { "drémora" } }
 	}
 	, subFolders{ "altvoice", "beggar" }
 {
@@ -151,7 +152,10 @@ MatchingFile MainWindow::s3ProcessVoice(const WemFile& wemFile)
 	result.wemFile = &wemFile;
 	QString outputFolder = ui->s3OutputFolderLineEdit->text();
 
-	QString baseName = QFileInfo(wemFile.filePath).baseName();
+	QString currentFilePath = wemFile.filePath;
+	currentFilePath.replace("v.txtp", ".txtp");
+	QString baseName = QFileInfo(currentFilePath).baseName();
+
 	if (voiceFileByBaseNames.contains(baseName))
 	{
 		result.found = true;
@@ -160,21 +164,50 @@ MatchingFile MainWindow::s3ProcessVoice(const WemFile& wemFile)
 	}
 	else
 	{
-		for (const QString& correspondingRace : correspondingRaces.keys())
-		{
-			baseName.replace(correspondingRace, correspondingRaces[correspondingRace]);
-		}
+		baseName.replace("_alt01", "");
+		baseName.replace("_elf_f_0300", "_1");
 		for (const QString& subFolder : subFolders)
 		{
 			baseName.replace("_" + subFolder, "");
 		}
-
-		if (voiceFileByBaseNames.contains(baseName))
+		for (const QString& correspondingRace : correspondingRaces.keys())
 		{
-			result.found = true;
-			result.voiceFile = voiceFileByBaseNames[baseName];
-			return result;
+			if (baseName.contains("_" + correspondingRace + "_"))
+			{
+				for (const QString& transCorrespondingRace : correspondingRaces[correspondingRace])
+				{
+					QString transName = baseName;
+					transName.replace("_" + correspondingRace + "_", "_" + transCorrespondingRace + "_");
+					if (voiceFileByBaseNames.contains(transName))
+					{
+						result.found = true;
+						result.voiceFile = voiceFileByBaseNames[transName];
+						return result;
+					}
+				}
+			}
 		}
+
+		//Sauvage !!
+		//QStringList fileNameParts = baseName.split("_");
+		//baseName = fileNameParts.last();
+		//for (int i = fileNameParts.count() - 2 ; i >= 0 ; i--)
+		//{
+		//	if (fileNameParts[i] == "m" || fileNameParts[i] == "f")
+		//	{
+		//		break;
+		//	}
+		//	baseName = fileNameParts[i] + "_" + baseName;
+		//}
+		//for (const QString& voiceFileByBaseName : voiceFileByBaseNames.keys())
+		//{
+		//	if (voiceFileByBaseName.contains(baseName))
+		//	{
+		//		result.found = true;
+		//		result.voiceFile = voiceFileByBaseNames[voiceFileByBaseName];
+		//		return result;
+		//	}
+		//}
 	}
 
 	return result;
@@ -288,6 +321,19 @@ void MainWindow::s2ProcessVoiceFolderFinished()
 		}
 	);
 	s2ProcessVoiceFilesFutureWatcher.setFuture(s2ProcessVoiceFilesFuture);
+
+	QFile frenchFilesLog("logs/frenchFiles.log");
+	if (frenchFilesLog.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		QTextStream out(&frenchFilesLog);
+		for (const QString& filePath : voiceFilePaths)
+		{
+			QString shortFilePath = filePath;
+			shortFilePath.replace(ui->s2InputFolderLineEdit->text() + "/", "");
+			out << QFileInfo(filePath).fileName() << "\t\t\t" << shortFilePath << Qt::endl;
+		}
+		frenchFilesLog.close();
+	}
 }
 
 void MainWindow::s2ProcessVoiceFilesFinished()
@@ -391,7 +437,7 @@ void MainWindow::s3ProcessVoicesFinished()
 		{
 			if (!matchingFile.found)
 			{
-				out << QFileInfo(matchingFile.wemFile->filePath).fileName() << "\t" << matchingFile.wemFile->id << Qt::endl;
+				out << QFileInfo(matchingFile.wemFile->filePath).fileName() << "\t[" << matchingFile.wemFile->id << "]" << Qt::endl;
 			}
 		}
 		missingFilesLog.close();
