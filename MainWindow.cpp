@@ -24,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
 		{ "sheogorath", "shéogorath" },
 		{ "dremora", "drémora" }
 	}
+	, subFolders{ "altvoice", "beggar" }
 {
 	ui->setupUi(this);
 
@@ -167,6 +168,10 @@ void MainWindow::replaceVoices()
 			for (const QString& correspondingRace : correspondingRaces.keys())
 			{
 				baseName.replace(correspondingRace, correspondingRaces[correspondingRace]);
+			}
+			for (const QString& subFolder : subFolders)
+			{
+				baseName.replace("_" + subFolder, "");
 			}
 
 			if (voiceFileByBaseNames.contains(baseName))

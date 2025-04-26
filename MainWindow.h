@@ -40,6 +40,7 @@ private:
 	QSettings settings;
 
 	const QHash<QString, QString> correspondingRaces;
+	const QStringList subFolders;
 
 	QList<WemFile> wemFiles;
 	QList<VoiceFile> voiceFiles;
