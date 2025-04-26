@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Oblivion Voice Frenchiser</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QGroupBox" name="s1GroupBox">
+      <property name="title">
+       <string>1- Correspondance Nom EN - ID</string>
+      </property>
+      <layout class="QFormLayout" name="formLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
+         <property name="toolTip">
+          <string>Utiliser Wwiser dans le pak extrait du remaster pour obtenir les fichiers</string>
+         </property>
+         <property name="text">
+          <string>Dossier txtp :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <widget class="QLineEdit" name="s1InputFolderLineEdit"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="s1InputFolderPushButton">
+           <property name="text">
+            <string>Ouvrir</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="1" column="1">
+        <widget class="QPushButton" name="s1ProcessPushButton">
+         <property name="text">
+          <string>Go !</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QListWidget" name="s1ListWidget"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="s2GroupBox">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="title">
+       <string>2- Fichiers français</string>
+      </property>
+      <layout class="QFormLayout" name="formLayout_2">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="toolTip">
+          <string>Fichiers extraits du BSA du jeu Oblivion d'origine</string>
+         </property>
+         <property name="text">
+          <string>Dossier VF :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QLineEdit" name="s2InputFolderLineEdit"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="s2InputFolderPushButton">
+           <property name="text">
+            <string>Ouvrir</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="1" column="1">
+        <widget class="QPushButton" name="s2ProcessPushButton">
+         <property name="text">
+          <string>Go !</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QListWidget" name="s2ListWidget"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="s3ReplaceVoicesGroupBox">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="title">
+       <string>3- Remplacer les voix</string>
+      </property>
+      <layout class="QFormLayout" name="formLayout_3">
+       <item row="0" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLineEdit" name="s3OutputFolderLineEdit"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="s3OutputFolderPushButton">
+           <property name="text">
+            <string>Ouvrir</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Dossier sortie :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="s3ReplaceVoicesPushButton">
+         <property name="text">
+          <string>Remplacer !</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QListWidget" name="s3MissingListWidget"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QProgressBar" name="progressBar"/>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
