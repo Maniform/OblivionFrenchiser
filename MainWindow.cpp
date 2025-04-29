@@ -5,27 +5,31 @@
 #include <QMessageBox>
 #include <QtConcurrent/QtConcurrent>
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget* parent)
 	: QMainWindow(parent)
 	, ui(new Ui::MainWindow)
 	, settings("Manicorp", "OblivionVoiceFrenchiser", this)
 	, correspondingRaces{
-		{ "high_elf", { "haut_elfe", "imperial" } },
-		{ "wood_elf", { "haut_elfe", "imperial" } },
-		{ "redguard", { "rougegarde", "imperial", "haut elfe", "nordique" } }, //je sais pas encore nordique ou haut elfe
-		{ "dark_elf", { "haut_elfe", "imperial" } },
-		{ "argonian", { "argonien", "haut_elfe" } },
-		{ "khajiit", { "argonien", "haut_elfe" } },
-		{ "nord", { "nordique", "rougegarde", "imperial", "haut elfe" } }, //je sais pas encore rougegarde ou impérial
-		{ "orc", { "nordique", "rougegarde", "imperial" } }, //je sais pas encore rougegarde ou impérial
-		{ "breton", { "imperial", "haut_elfe", "nordique" } },
-		{ "imperial", { "imperial", "haut_elfe", "rougegarde", "nordique" } },
-		{ "dark_seducer", { "vil_séducteur" } },
-		{ "golden_saint", { "saint_doré" } },
-		{ "sheogorath", { "shéogorath" } },
-		{ "dremora", { "drémora" } }
+		{ "high_elf", { "haut_elfe", "imperial", "shéogorath" } },
+		{ "wood_elf", { "haut_elfe", "imperial", "shéogorath" } },
+		{ "redguard", { "rougegarde", "imperial", "haut elfe", "nordique", "shéogorath" } }, //je sais pas encore nordique ou haut elfe
+		{ "dark_elf", { "haut_elfe", "imperial", "shéogorath" } },
+		{ "argonian", { "argonien", "haut_elfe", "shéogorath" } },
+		{ "khajiit", { "argonien", "haut_elfe", "shéogorath" } },
+		{ "nord", { "nordique", "rougegarde", "imperial", "haut elfe", "shéogorath" } }, //je sais pas encore rougegarde ou impérial
+		{ "orc", { "nordique", "rougegarde", "imperial", "shéogorath" } }, //je sais pas encore rougegarde ou impérial
+		{ "breton", { "imperial", "haut_elfe", "nordique", "shéogorath" } },
+		{ "imperial", { "imperial", "haut_elfe", "rougegarde", "nordique", "shéogorath" } },
+		{ "dark_seducer", { "vil_séducteur", "shéogorath" } },
+		{ "golden_saint", { "saint_doré", "shéogorath" } },
+		{ "sheogorath", { "shéogorath", "shéogorath" } },
+		{ "dremora", { "drémora", "shéogorath" } }
 	}
 	, subFolders{ "altvoice", "beggar" }
+	, shittyReplace{
+		{"_alt01", ""},
+		{"_elf_f_0300", "_1"},
+	}
 {
 	ui->setupUi(this);
 
@@ -85,6 +89,64 @@ QStringList MainWindow::getFilesInFolder(const QString& folderPath, const QStrin
 		}
 	}
 	return files;
+}
+
+QString MainWindow::getLineId(const QString& filePath) const
+{
+	QString part = QFileInfo(filePath).baseName();
+	QStringList parts = part.split("_");
+	for (int i = parts.size() - 1; i >= 0; i--)
+	{
+		if (parts[i].size() == 8)
+		{
+			return parts[i];
+		}
+	}
+	return QString();
+}
+
+QString MainWindow::getFullLineId(const QString& filePath) const
+{
+	QString part = QFileInfo(filePath).fileName();
+	QStringList parts = part.split("_");
+	bool processId = false;
+	QString fullLineId;
+	for (const QString& part : parts)
+	{
+		if (processId)
+		{
+			if (part.contains("."))
+			{
+				break;
+			}
+			fullLineId += part + "_";
+		}
+
+		if (part.size() == 1)
+		{
+			processId = true;
+		}
+	}
+
+	fullLineId.removeLast();
+	return fullLineId;
+}
+
+QChar MainWindow::getSex(const QString& filePath) const
+{
+	const QString fileName = QFileInfo(filePath).baseName();
+	const QStringList parts = fileName.split("_");
+	for (const QString& part : parts)
+	{
+		if (part.size() == 1)
+		{
+			if (part == "m" || part == "f")
+			{
+				return part[0];
+			}
+		}
+	}
+	return QChar();
 }
 
 QList<WemFile> MainWindow::s1ProcessFolder(const QString& folderPath)
@@ -168,7 +230,7 @@ MatchingFile MainWindow::s3ProcessVoice(const WemFile& wemFile)
 		baseName.replace("_elf_f_0300", "_1");
 		for (const QString& subFolder : subFolders)
 		{
-			baseName.replace("_" + subFolder, "");
+			baseName.replace("_" + subFolder + "_", "_");
 		}
 		for (const QString& correspondingRace : correspondingRaces.keys())
 		{
@@ -353,6 +415,15 @@ void MainWindow::s2ProcessVoiceFilesFinished()
 	ui->s3ReplaceVoicesGroupBox->setEnabled(true);
 
 	ui->statusbar->showMessage(tr("Fichiers trouvés : ") + QString::number(voiceFiles.size()));
+
+	for (VoiceFile& voiceFile : voiceFiles)
+	{
+		const QString& lineId = getFullLineId(voiceFile.filePath);
+		if (!lineId.isEmpty())
+		{
+			voiceFileByLineIds[lineId].append(&voiceFile);
+		}
+	}
 }
 
 void MainWindow::on_s3OutputFolderPushButton_clicked()
@@ -416,7 +487,7 @@ void MainWindow::s3ProcessVoicesFinished()
 	s3ProcessReplaceVoiceFutureWatcher.setFuture(s3ProcessReplaceVoiceFuture);
 
 	QFile foundFilesLog("logs/foundFiles.log");
-	if (foundFilesLog.open(QIODevice::WriteOnly | QIODevice::Text))
+	if (foundFilesLog.open(QFile::WriteOnly | QFile::Text))
 	{
 		QTextStream out(&foundFilesLog);
 		for (const MatchingFile& matchingFile : matchingFiles)
@@ -430,7 +501,7 @@ void MainWindow::s3ProcessVoicesFinished()
 	}
 
 	QFile missingFilesLog("logs/missingFiles.log");
-	if (missingFilesLog.open(QIODevice::WriteOnly | QIODevice::Text))
+	if (missingFilesLog.open(QFile::WriteOnly | QFile::Text))
 	{
 		QTextStream out(&missingFilesLog);
 		for (const MatchingFile& matchingFile : matchingFiles)
@@ -441,6 +512,37 @@ void MainWindow::s3ProcessVoicesFinished()
 			}
 		}
 		missingFilesLog.close();
+	}
+
+	QFile missingFilesIdFoundLog("logs/missingFilesIdFound.log");
+	if (missingFilesIdFoundLog.open(QFile::WriteOnly | QFile::Text))
+	{
+		QTextStream out(&missingFilesIdFoundLog);
+		for (const MatchingFile& matchingFile : matchingFiles)
+		{
+			if (!matchingFile.found)
+			{
+				QString lineId = getFullLineId(matchingFile.wemFile->filePath);
+				if (voiceFileByLineIds.contains(lineId))
+				{
+					bool sameSexFound = false;
+					for (const VoiceFile* voiceFile : voiceFileByLineIds[lineId])
+					{
+						if (getSex(voiceFile->correspondingName) == getSex(matchingFile.wemFile->filePath))
+						{
+							sameSexFound = true;
+							break;
+						}
+					}
+
+					if (sameSexFound)
+					{
+						out << lineId << "\t" << QFileInfo(matchingFile.wemFile->filePath).fileName() << "\t[" << matchingFile.wemFile->id << "]" << Qt::endl;
+					}
+				}
+			}
+		}
+		missingFilesIdFoundLog.close();
 	}
 }
 

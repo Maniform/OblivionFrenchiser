@@ -48,6 +48,7 @@ private:
 
 	const QHash<QString, QVector<QString>> correspondingRaces;
 	const QStringList subFolders;
+	const QHash<QString, QString> shittyReplace;
 
 	QList<WemFile> wemFiles;
 	QList<VoiceFile> voiceFiles;
@@ -56,8 +57,12 @@ private:
 	QHash<QString, WemFile*> wemByBaseNames;
 	QHash<QString, VoiceFile*> voiceFileByBaseNames;
 	QList<MatchingFile> matchingFiles;
+	QHash<QString, QList<VoiceFile*>> voiceFileByLineIds;
 
 	QStringList getFilesInFolder(const QString& folderPath, const QStringList& fileSuffixes);
+	QString getLineId(const QString& filePath) const;
+	QString getFullLineId(const QString& filePath) const;
+	QChar getSex(const QString& filePath) const;
 
     QFuture<QList<WemFile>> s1ProcessFolderFuture;
 	QFutureWatcher<QList<WemFile>> s1ProcessFolderFutureWatcher;
