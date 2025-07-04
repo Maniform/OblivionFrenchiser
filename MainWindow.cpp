@@ -544,6 +544,29 @@ void MainWindow::s3ProcessVoicesFinished()
 		}
 		missingFilesIdFoundLog.close();
 	}
+
+	QFile voicesFilesNotFound("logs/voicesFilesNotFound.log");
+	if (voicesFilesNotFound.open(QFile::WriteOnly | QFile::Text))
+	{
+		QTextStream out(&voicesFilesNotFound);
+		QList<QString> foundFiles;
+		for (const MatchingFile& matchingFile : matchingFiles)
+		{
+			if (matchingFile.voiceFile)
+			{
+				foundFiles.append(matchingFile.voiceFile->filePath);
+			}
+		}
+
+		for (const VoiceFile& voiceFile : voiceFiles)
+		{
+			if (!foundFiles.contains(voiceFile.filePath))
+			{
+				out << voiceFile.correspondingName << "\t" << voiceFile.filePath << Qt::endl;
+			}
+		}
+		voicesFilesNotFound.close();
+	}
 }
 
 void MainWindow::s3ProcessReplaceVoicesFinished()
